@@ -1,39 +1,24 @@
 import streamlit as st
 from transformers import pipeline
-import requests
-from bs4 import BeautifulSoup
 import pandas as pd
-from PIL import Image
-import random
-import time
-import re
 
 # -------------------------------
 # PAGE CONFIG
 # -------------------------------
 st.set_page_config(
-    page_title="ARSA - Amazon Review Sentiment Analyzer",
+    page_title="ARSA - Sentiment Analyzer",
     page_icon="🛍️",
     layout="wide"
 )
 
 # -------------------------------
-# LOGO + TITLE
+# TITLE
 # -------------------------------
-col1, col2 = st.columns([1, 4])
-
-with col1:
-    try:
-        st.image("logo.png", width=80)
-    except:
-        pass
-
-with col2:
-    st.markdown("## 🛍️ ARSA")
-    st.caption("Amazon Review Sentiment Analyzer (Powered by BERT)")
+st.markdown("## 🛍️ ARSA - Sentiment Analyzer (BERT Powered)")
+st.caption("Analyze reviews or text using AI (No scraping, fully safe & stable)")
 
 # -------------------------------
-# LOAD BERT MODEL
+# LOAD MODEL
 # -------------------------------
 @st.cache_resource
 def load_model():
@@ -45,129 +30,78 @@ def load_model():
 model = load_model()
 
 # -------------------------------
-# BERT SENTIMENT FUNCTION
+# SENTIMENT FUNCTION
 # -------------------------------
 def get_sentiment(text):
     try:
         result = model(text[:512])[0]
-        stars = int(result['label'][0])
+        stars = int(result["label"][0])
 
         if stars >= 4:
-            return "positive"
+            return "Positive"
         elif stars == 3:
-            return "neutral"
+            return "Neutral"
         else:
-            return "negative"
+            return "Negative"
     except:
-        return "neutral"
+        return "Neutral"
 
 # -------------------------------
-# SAFE AMAZON SCRAPER (ANTI-BLOCK)
+# INPUT SECTION
 # -------------------------------
-HEADERS = [
-    {"User-Agent": "Mozilla/5.0"},
-    {"User-Agent": "Chrome/120.0"},
-    {"User-Agent": "Safari/537.36"}
-]
+st.subheader("✍️ Enter Product Reviews / Text")
 
-def extract_asin(url):
-    match = re.search(r'/dp/([A-Z0-9]{10})', url)
-    return match.group(1) if match else None
-
-def scrape_reviews(asin, pages=2):
-    reviews = []
-
-    for page in range(1, pages + 1):
-        url = f"https://www.amazon.com/product-reviews/{asin}/?pageNumber={page}"
-        headers = random.choice(HEADERS)
-
-        try:
-            time.sleep(random.uniform(1.5, 3))
-            r = requests.get(url, headers=headers, timeout=10)
-
-            # If blocked
-            if r.status_code != 200:
-                break
-
-            soup = BeautifulSoup(r.text, "html.parser")
-            blocks = soup.select("[data-hook='review']")
-
-            if not blocks:
-                break
-
-            for b in blocks:
-                text = b.select_one("[data-hook='review-body']")
-                if text:
-                    reviews.append(text.text.strip())
-
-        except:
-            break
-
-    return reviews
-
-# -------------------------------
-# UI INPUT
-# -------------------------------
-st.subheader("🔗 Enter Amazon Product URL")
-url = st.text_input("Paste Amazon product link")
-
-pages = st.slider("Pages to scrape", 1, 5, 2)
+text_input = st.text_area(
+    "Write or paste multiple reviews (one per line)",
+    height=200
+)
 
 # -------------------------------
 # ANALYZE BUTTON
 # -------------------------------
-if st.button("🚀 Analyze Reviews"):
+if st.button("🚀 Analyze Sentiment"):
 
-    if not url.strip():
-        st.warning("Please enter a URL")
+    if not text_input.strip():
+        st.warning("Please enter some text first.")
     else:
-        asin = extract_asin(url)
+        reviews = [r.strip() for r in text_input.split("\n") if r.strip()]
 
-        if not asin:
-            st.error("Invalid Amazon URL")
-        else:
-            with st.spinner("Scraping reviews safely..."):
+        sentiments = [get_sentiment(r) for r in reviews]
 
-                reviews = scrape_reviews(asin, pages)
+        # -----------------------
+        # COUNT
+        # -----------------------
+        pos = sentiments.count("Positive")
+        neg = sentiments.count("Negative")
+        neu = sentiments.count("Neutral")
 
-            if len(reviews) == 0:
-                st.error("⚠️ Amazon blocked scraping OR no reviews found.")
-                st.info("Try again later or use a different product.")
-            else:
+        # -----------------------
+        # METRICS
+        # -----------------------
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Positive", pos)
+        c2.metric("Negative", neg)
+        c3.metric("Neutral", neu)
 
-                sentiments = [get_sentiment(r) for r in reviews]
+        # -----------------------
+        # CHART
+        # -----------------------
+        df = pd.DataFrame({
+            "Sentiment": ["Positive", "Negative", "Neutral"],
+            "Count": [pos, neg, neu]
+        })
 
-                pos = sentiments.count("positive")
-                neg = sentiments.count("negative")
-                neu = sentiments.count("neutral")
+        st.bar_chart(df.set_index("Sentiment"))
 
-                # -----------------------
-                # METRICS
-                # -----------------------
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Positive", pos)
-                c2.metric("Negative", neg)
-                c3.metric("Neutral", neu)
+        # -----------------------
+        # RESULTS
+        # -----------------------
+        st.subheader("📝 Results")
 
-                # -----------------------
-                # CHART
-                # -----------------------
-                df = pd.DataFrame({
-                    "Sentiment": ["Positive", "Negative", "Neutral"],
-                    "Count": [pos, neg, neu]
-                })
-
-                st.bar_chart(df.set_index("Sentiment"))
-
-                # -----------------------
-                # SAMPLE REVIEWS
-                # -----------------------
-                st.subheader("📝 Sample Reviews")
-
-                for i in range(min(5, len(reviews))):
-                    st.write("💬", reviews[i])
-                    st.write("➡ Sentiment:", sentiments[i])
-                    st.write("---")
+        for i, review in enumerate(reviews):
+            st.write("💬", review)
+            st.write("➡ Sentiment:", sentiments[i])
+            st.write("---")
 
 # -------------------------------
 # SIDEBAR
@@ -175,13 +109,11 @@ if st.button("🚀 Analyze Reviews"):
 st.sidebar.title("🛍️ ARSA")
 
 st.sidebar.info("""
-ARSA uses **BERT Transformer AI** to analyze Amazon reviews.
-
-✔ Input: Amazon Product URL  
+✔ AI Model: BERT (nlptown)  
+✔ Input: Manual text/reviews  
 ✔ Output: Positive / Negative / Neutral  
-✔ AI Model: BERT (nlptown)
 
-⚠ If Amazon blocks scraping, try again later.
+⚡ Fully stable (no Amazon blocking issues)
 """)
 
 st.sidebar.success("Made with ❤️ by Maryam Nauman")
