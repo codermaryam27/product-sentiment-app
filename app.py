@@ -1,89 +1,154 @@
 import streamlit as st
-import joblib
-import re
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
+from transformers import pipeline
+import requests
+import pandas as pd
+from PIL import Image
 
-# Page settings
-st.set_page_config(page_title="Product Review Sentiment Analyzer", page_icon="📦", layout="centered")
+# -------------------------------
+# PAGE CONFIG
+# -------------------------------
+st.set_page_config(
+    page_title="ARSA - Amazon Review Sentiment Analyzer",
+    page_icon="🛍️",
+    layout="wide"
+)
 
-st.title("📦 Product Review Sentiment Analyzer")
-st.markdown("### Enter a product review and get instant sentiment prediction (Positive / Negative)")
+# -------------------------------
+# LOGO + TITLE (TOP)
+# -------------------------------
+col1, col2 = st.columns([1,4])
 
-# Load model and vectorizer
+with col1:
+    try:
+        logo = Image.open("logo.png")
+        st.image(logo, width=80)
+    except:
+        pass
+
+with col2:
+    st.markdown("## 🛍️ ARSA")
+    st.caption("Amazon Review Sentiment Analyzer (AI-powered using BERT)")
+
+# -------------------------------
+# LOAD BERT MODEL
+# -------------------------------
 @st.cache_resource
 def load_model():
-    model = joblib.load('best_logistic_model.pkl')
-    vectorizer = joblib.load('tfidf_vectorizer.pkl')
-    return model, vectorizer
+    return pipeline(
+        "sentiment-analysis",
+        model="nlptown/bert-base-multilingual-uncased-sentiment"
+    )
 
-model, tfidf = load_model()
+model = load_model()
 
-# Preprocessing functions (same as Week 2)
-nltk.download('punkt_tab', quiet=True)
-nltk.download('punkt', quiet=True)
-nltk.download('stopwords', quiet=True)
+# -------------------------------
+# SENTIMENT FUNCTION
+# -------------------------------
+def get_sentiment(text):
+    result = model(text[:512])[0]
+    stars = int(result['label'][0])
 
-stop_words = set(stopwords.words('english'))
-
-def clean_text(text):
-    if not isinstance(text, str):
-        return ""
-    text = text.lower()
-    text = re.sub(r'[^a-z\s]', '', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
-
-def remove_stopwords(text):
-    tokens = word_tokenize(text)
-    filtered = [word for word in tokens if word not in stop_words]
-    return ' '.join(filtered)
-
-# User input
-review = st.text_area("Paste your Amazon product review here:", 
-                      height=150, 
-                      placeholder="Example: This phone is amazing! Battery lasts very long and camera quality is superb.")
-
-if st.button("🔍 Analyze Sentiment", type="primary"):
-    if review.strip():
-        with st.spinner("Analyzing your review..."):
-            # Preprocess
-            cleaned = clean_text(review)
-            processed = remove_stopwords(cleaned)
-            
-            # Transform with TF-IDF
-            vector = tfidf.transform([processed])
-            
-            # Predict
-            prediction = model.predict(vector)[0]
-            probability = model.predict_proba(vector)[0]
-            
-            # Show result
-            if prediction == 'positive':
-                st.success(f"✅ **Positive Sentiment** ({probability[1]*100:.1f}% confidence)")
-                st.balloons()
-            else:
-                st.error(f"❌ **Negative Sentiment** ({probability[0]*100:.1f}% confidence)")
-            
-            st.subheader("Processed Review (for understanding):")
-            st.write(processed)
-            
-            # Confidence bar
-            st.progress(int(max(probability)*100))
-            
+    if stars >= 4:
+        return "positive"
+    elif stars == 3:
+        return "neutral"
     else:
-        st.warning("⚠️ Please enter a review first!")
+        return "negative"
 
-# Sidebar extra info
-st.sidebar.header("About this App")
+# -------------------------------
+# REVIEW FETCH (DEMO API)
+# -------------------------------
+def get_reviews(url):
+    api_url = "https://dummyjson.com/comments"
+    res = requests.get(api_url)
+    data = res.json()
+    reviews = [item["body"] for item in data["comments"]]
+    return reviews
+
+# -------------------------------
+# USER INPUT
+# -------------------------------
+st.subheader("🔗 Enter Amazon Product URL")
+url = st.text_input("Paste product link here")
+
+# -------------------------------
+# ANALYZE BUTTON
+# -------------------------------
+if st.button("🚀 Analyze Reviews"):
+
+    if url.strip() == "":
+        st.warning("⚠️ Please enter a product URL")
+    else:
+        with st.spinner("Analyzing reviews using AI..."):
+
+            reviews = get_reviews(url)
+
+            if len(reviews) == 0:
+                st.error("No reviews found!")
+            else:
+                sentiments = [get_sentiment(r) for r in reviews]
+
+                pos = sentiments.count("positive")
+                neg = sentiments.count("negative")
+                neu = sentiments.count("neutral")
+
+                # -------------------------------
+                # METRICS
+                # -------------------------------
+                col1, col2, col3 = st.columns(3)
+                col1.metric("✅ Positive", pos)
+                col2.metric("❌ Negative", neg)
+                col3.metric("⚖️ Neutral", neu)
+
+                # -------------------------------
+                # CHART
+                # -------------------------------
+                df = pd.DataFrame({
+                    "Sentiment": ["Positive", "Negative", "Neutral"],
+                    "Count": [pos, neg, neu]
+                })
+
+                st.subheader("📊 Sentiment Distribution")
+                st.bar_chart(df.set_index("Sentiment"))
+
+                # -------------------------------
+                # SAMPLE REVIEWS
+                # -------------------------------
+                st.subheader("📝 Sample Reviews with Prediction")
+
+                for i in range(min(5, len(reviews))):
+                    st.write(f"**Review:** {reviews[i]}")
+                    st.write(f"**Sentiment:** {sentiments[i]}")
+                    st.write("---")
+
+# -------------------------------
+# SIDEBAR (LOGO + ABOUT)
+# -------------------------------
+try:
+    sidebar_logo = Image.open("logo.png")
+    st.sidebar.image(sidebar_logo, width=120)
+except:
+    pass
+
+st.sidebar.markdown("## 🛍️ ARSA")
+
 st.sidebar.info("""
-This is your **Product Review Sentiment Analyzer** built during the 5-week project.
+**ARSA - Amazon Review Sentiment Analyzer**
 
-- Data: Amazon Product Reviews (Kaggle)
-- Preprocessing: Cleaning + Stopwords removal
-- Features: TF-IDF
-- Best Model: Logistic Regression
+This is an AI-powered web app that analyzes sentiment of product reviews.
+
+🔹 Model: BERT (Transformer)
+🔹 Input: Amazon Product URL
+🔹 Output: Positive / Negative / Neutral sentiment
+
+✨ Features:
+- Real-time sentiment prediction
+- Interactive charts
+- Clean UI
+
+📌 Note:
+Currently using demo API for reviews (can be replaced with real Amazon API).
 """)
 
-st.sidebar.success("Made with ❤️ by Maryam")
+st.sidebar.caption("Version 2.0 | Powered by AI")
+st.sidebar.success("Made with ❤️ by Maryam Nauman")
