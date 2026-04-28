@@ -1,9 +1,6 @@
-scikit-learn==1.6.1
-joblib
-numpy
-pandas
-nltk
 streamlit
+transformers
+torch
+pandas
 requests
 beautifulsoup4
-
