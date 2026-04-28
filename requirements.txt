@@ -1,5 +1,9 @@
-streamlit
-scikit-learn
-nltk
-pandas
+scikit-learn==1.6.1
 joblib
+numpy
+pandas
+nltk
+streamlit
+requests
+beautifulsoup4
+
