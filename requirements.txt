@@ -1,6 +1,8 @@
-streamlit
-transformers
-torch
+streamlit>=1.30.0
 pandas
+scikit-learn
+nltk
+matplotlib
+numpy
 requests
-Pillow
+beautifulsoup4
