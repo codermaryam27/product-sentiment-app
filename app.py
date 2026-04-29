@@ -2,11 +2,26 @@ import streamlit as st
 from transformers import pipeline
 import pandas as pd
 import os
-current_dir = os.path.dirname(__file__)
-logo_path = os.path.join(current_dir, "logo.png")
 
-st.image(logo_path, width=120)
+import os
+import streamlit as st
 
+st.set_page_config(
+    page_title="ARSA - Sentiment Analyzer",
+    page_icon="🛍️",
+    layout="wide"
+)
+
+# -------------------------------
+# LOGO (SAFE VERSION)
+# -------------------------------
+logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
+
+if os.path.exists(logo_path):
+    st.image(logo_path, width=120)
+else:
+    st.error("Logo file not found. Check logo.png location")
+    
 # -------------------------------
 # PAGE CONFIG
 # -------------------------------
