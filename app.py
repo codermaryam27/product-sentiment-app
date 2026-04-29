@@ -1,6 +1,11 @@
 import streamlit as st
 from transformers import pipeline
 import pandas as pd
+import os
+current_dir = os.path.dirname(__file__)
+logo_path = os.path.join(current_dir, "logo.png")
+
+st.image(logo_path, width=120)
 
 # -------------------------------
 # PAGE CONFIG
@@ -10,13 +15,6 @@ st.set_page_config(
     page_icon="🛍️",
     layout="wide"
 )
-
-import os
-
-current_dir = os.path.dirname(__file__)
-logo_path = os.path.join(current_dir, "logo.png")
-
-st.image(logo_path, width=120)
     
 # -------------------------------
 # TITLE
