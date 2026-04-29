@@ -12,9 +12,17 @@ st.set_page_config(
 )
 
 # -------------------------------
+# LOGO
+# -------------------------------
+try:
+    st.image("logo.png", width=120)
+except:
+    st.warning("Logo not found")
+    
+# -------------------------------
 # TITLE
 # -------------------------------
-st.markdown("## 🛍️ ARSA - Sentiment Analyzer (BERT Powered)")
+st.markdown("## 🛍️ ARSA - Amazon Review Sentiment Analyzer (BERT Powered)")
 st.caption("Analyze reviews or text using AI (No scraping, fully safe & stable)")
 
 # -------------------------------
