@@ -11,13 +11,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# -------------------------------
-# LOGO
-# -------------------------------
-try:
-    st.image("logo.png", width=120)
-except:
-    st.warning("Logo not found")
+import os
+
+current_dir = os.path.dirname(__file__)
+logo_path = os.path.join(current_dir, "logo.png")
+
+st.image(logo_path, width=120)
     
 # -------------------------------
 # TITLE
